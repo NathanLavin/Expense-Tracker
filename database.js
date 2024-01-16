@@ -56,6 +56,17 @@ async function registerUser(user) {
   }
 }
 
+async function loginUser(user) {
+  try {
+    const db = await connect();
+    const registered = await db.collection('Users').findOne(user);
+    debugDb(registered);
+    return registered;
+  } catch (error) {
+    throw error;
+  }
+}
+
 //Expense functions
 async function getExpenses() {
   const database = await connect();
@@ -71,6 +82,33 @@ async function getExpensesById(expenseId) {
   return expense;
 }
 
+async function addExpense(expense) {
+  try {
+    const db = await connect();
+    const added = await db.collection('Expenses').insertOne(expense);
+    debugDb(added);
+    return added;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function updateUserExpenseDetails(userId, newExpenseId) {
+  try {
+    const db = await connect();
+    // Update the user document to include the new expenseDetails
+    const updatedUser = await db.collection('Users').updateOne(
+      { _id: userId },
+      { $addToSet: { expenseDetails: newExpenseId } }
+    );
+
+    debugDb(updatedUser);
+    return updatedUser;
+  } catch (error) {
+    throw error;
+  }
+}
+
 async function ping() {
   const database = await connect();
   await database.command({ ping: 1 });
@@ -84,9 +122,11 @@ export {
   getUsers,
   getUsersById,
   registerUser,
-
+  loginUser,
   getExpenses,
   getExpensesById,
+  addExpense,
+  updateUserExpenseDetails,
 };
 
 

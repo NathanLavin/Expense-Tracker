@@ -1,7 +1,7 @@
 import express from 'express';
 const router = express.Router();
 import debug from 'debug';
-import { newId, getUsers, getUsersById, registerUser } from '../../database.js';
+import { newId, getUsers, getUsersById, registerUser, loginUser } from '../../database.js';
 import { validBody } from '../../middleware/validBody.js';
 import Joi from 'joi';
 
@@ -68,6 +68,33 @@ router.post('/register', validBody(userRegisterSchema), async (req, res) => {
 
     // Send the user as the response with a 201 status code (Created)
     res.status(201).json(user);
+
+  } catch (err) {
+    // Handle the error appropriately and send a 400 status code (Bad Request)
+    res.status(400).json({ error: err.message });
+  }
+});
+
+//bcrypt this and issueauth token
+router.post('/login', async (req, res) => {
+  try {
+    debugUser(`Attempting Login user with email ${req.body.email}`);
+
+    // Get the user from the database
+    const user = await loginUser(req.body.email);
+
+    // Check if the user exists
+    if (!user) {
+      throw new Error('User does not exist');
+    }
+
+    // Check if the password is correct
+    if (user.password !== req.body.password) {
+      throw new Error('Password is incorrect');
+    }
+
+    // Send the user as the response with a 200 status code (OK)
+    res.status(200).json(user);
 
   } catch (err) {
     // Handle the error appropriately and send a 400 status code (Bad Request)
