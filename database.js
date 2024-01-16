@@ -93,13 +93,21 @@ async function addExpense(expense) {
   }
 }
 
-async function updateUserExpenseDetails(userId, newExpenseId) {
+async function updateUserExpenseDetails(userId, newExpenseId, expenseName, cost) {
   try {
     const db = await connect();
     // Update the user document to include the new expenseDetails
     const updatedUser = await db.collection('Users').updateOne(
       { _id: userId },
-      { $addToSet: { expenseDetails: newExpenseId } }
+      {
+        $addToSet: {
+          expenses: {
+            _id: newExpenseId,
+            expenseName: expenseName,
+            cost: cost,
+          }
+        }
+      }
     );
 
     debugDb(updatedUser);

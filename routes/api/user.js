@@ -75,7 +75,7 @@ router.post('/register', validBody(userRegisterSchema), async (req, res) => {
   }
 });
 
-//bcrypt this and issueauth token
+//bcrypt this and issueAuthToken
 router.post('/login', async (req, res) => {
   try {
     debugUser(`Attempting Login user with email ${req.body.email}`);

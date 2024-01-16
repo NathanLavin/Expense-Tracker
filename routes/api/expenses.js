@@ -63,8 +63,8 @@ router.post('/add/:userId', validBody(expenseSchema), async (req, res) => {
     // Add the new expense to the database
     const addedExpense = await addExpense(newExpense);
 
-    // Update the user document to include the new expenseDetails
-    await updateUserExpenseDetails(userId, newExpenseId);
+    // Update the user document to include the new expenseDetails in the expenses array
+    await updateUserExpenseDetails(userId, newExpenseId, req.body.expenseName, req.body.cost);
 
     // Send the added expense as the response
     res.status(201).json(addedExpense);
