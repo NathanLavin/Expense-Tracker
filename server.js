@@ -5,7 +5,7 @@ import debug from 'debug';
 const debugServer = debug('app:Server');
 
 import { UserRouter } from './routes/api/user.js';
-// import { ExpenseRouter } from './routes/api/expenses.js';
+import { ExpenseRouter } from './routes/api/expenses.js';
 
 //To start front end make sure cd ExpenseTracker is open in terminal and run npm run dev
 //To start backend open terminal and run npm run start-dev
@@ -25,7 +25,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/user', UserRouter);
-// app.use('/api/expense', ExpenseRouter);
+app.use('/api/expenses', ExpenseRouter);
 
 app.listen(port, () => {
   debugServer(`Server running at http://localhost:${port}`);
