@@ -67,6 +67,19 @@ async function loginUser(user) {
   }
 }
 
+async function logoutUser(authToken) {
+  try {
+    const db = await connect();
+
+    // Your logic to logout the user, update any necessary fields, clear tokens, etc.
+
+    debugDb(`User with authentication token ${authToken} logged out`);
+    return true; // Return true if the user was successfully logged out
+  } catch (error) {
+    throw error;
+  }
+}
+
 async function updateUser(userId, updateData) {
   try {
     const db = await connect();
@@ -278,6 +291,7 @@ export {
   getUsersById,
   registerUser,
   loginUser,
+  logoutUser,
   updateUser,
   deleteUser,
   getExpenses,

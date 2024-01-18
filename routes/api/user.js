@@ -1,12 +1,16 @@
 import express from 'express';
 const router = express.Router();
 import debug from 'debug';
-import { newId, getUsers, getUsersById, registerUser, loginUser, updateUser, deleteUser } from '../../database.js';
+import { newId, getUsers, getUsersById, registerUser, loginUser, logoutUser, updateUser, deleteUser } from '../../database.js';
 import { validBody } from '../../middleware/validBody.js';
+// import { valid } from '../../middleware/validBody.js';
 import Joi from 'joi';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 
 const debugUser = debug('app:UserRouter');
 
+//Schemas
 const userRegisterSchema = Joi.object({  // Corrected to Joi.object
   name: Joi.string().trim().required(),
   email: Joi.string().trim().email().required(),
@@ -21,6 +25,32 @@ const updateUserSchema = Joi.object({
   yearlyIncome: Joi.number(),
 });
 
+const userLoginSchema = Joi.object({
+  email: Joi.string().trim().email().required(),
+  password: Joi.string().trim().required(),
+});
+
+//Functions
+async function issueAuthToken(user) {
+  const payload = { _id: user._id, email: user.email, role: user.role };
+  const secret = process.env.JWT_SECRET;
+  const options = { expiresIn: '1h' };
+
+  // Add logic for fetching roles and merging permissions if needed
+  // const roles = await fetchRoles(user, role => findRoleByName(role));
+  // const permissions = mergePermissions(user, roles);
+  // payload.permissions = permissions;
+
+  const authToken = jwt.sign(payload, secret, options);
+  return authToken;
+}
+
+function issueAuthCookie(res, authToken) {
+  const cookieOptions = { httpOnly: true, maxAge: 1000 * 60 * 60 };
+  res.cookie('authToken', authToken, cookieOptions);
+}
+
+//Routes
 router.get('/list', async (req, res) => {
   debugUser(`Getting all users, the query string is ${JSON.stringify(req.query)}`);
 
@@ -58,12 +88,16 @@ router.post('/register', validBody(userRegisterSchema), async (req, res) => {
     // Generate a new ID using newId function (adjust the path accordingly)
     const newUserId = newId();
 
+    // Hash the user's password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(req.body.password, saltRounds);
+
     // Create a new user object with the provided data and the new ID
     const newUser = {
       _id: newUserId,
       name: req.body.name,
       email: req.body.email,
-      password: req.body.password,
+      password: hashedPassword, // Store the hashed password in the database
       yearlyIncome: req.body.yearlyIncome,
     };
 
@@ -82,13 +116,12 @@ router.post('/register', validBody(userRegisterSchema), async (req, res) => {
   }
 });
 
-//bcrypt this and issueAuthToken this has not been fully implemented yet
-router.post('/login', async (req, res) => {
+router.post('/login', validBody(userLoginSchema), async (req, res) => {
   try {
     debugUser(`Attempting Login user with email ${req.body.email}`);
 
     // Get the user from the database
-    const user = await loginUser(req.body.email);
+    const user = await loginUser({ email: req.body.email });
 
     // Check if the user exists
     if (!user) {
@@ -96,16 +129,49 @@ router.post('/login', async (req, res) => {
     }
 
     // Check if the password is correct
-    if (user.password !== req.body.password) {
+    const isPasswordValid = await bcrypt.compare(req.body.password, user.password);
+    if (!isPasswordValid) {
       throw new Error('Password is incorrect');
     }
 
-    // Send the user as the response with a 200 status code (OK)
-    res.status(200).json(user);
+    // Generate and send an authentication token
+    const authToken = await issueAuthToken(user);
+
+    // Set the authentication token as an HTTP-only cookie
+    issueAuthCookie(res, authToken);
+
+    res.status(200).json({ message: 'Login successful', authToken });
 
   } catch (err) {
     // Handle the error appropriately and send a 400 status code (Bad Request)
     res.status(400).json({ error: err.message });
+  }
+});
+
+// Logout route not working correctly come back to this when I get the chance
+router.post('/logout', async (req, res) => {
+  try {
+    const authToken = req.cookies.authToken; // Assuming you store the authToken in a cookie
+
+    // Call the logoutUser function
+    const logoutResult = await logoutUser(authToken);
+
+    if (logoutResult) {
+      // Clear the authentication token cookie
+      res.clearCookie('authToken');
+
+      // Send a success response
+      res.status(200).json({ message: 'Logout successful' });
+    } else {
+      // Send an appropriate error response
+      res.status(500).json({ error: 'Logout failed' });
+    }
+  } catch (err) {
+    // Log the error for debugging purposes
+    console.error(err);
+
+    // Handle the error appropriately and send a 500 status code (Internal Server Error)
+    res.status(500).json({ error: err.message });
   }
 });
 
