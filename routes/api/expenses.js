@@ -1,7 +1,7 @@
 import express from 'express';
 const router = express.Router();
 import debug from 'debug';
-import { newId, getExpenses, getExpensesById, addExpense, updateUserExpenseDetails } from '../../database.js';
+import { newId, getExpenses, getExpensesById, addExpense, updateUserExpenseDetails, deleteExpense, updateExpensePrice } from '../../database.js';
 import { validBody } from '../../middleware/validBody.js';
 import Joi from 'joi';
 
@@ -9,6 +9,10 @@ const debugUser = debug('app:ExpenseRouter');
 
 const expenseSchema = Joi.object({
   expenseName: Joi.string().trim().required(),
+  cost: Joi.number().precision(2).required(),
+});
+
+const updateExpensePriceSchema = Joi.object({
   cost: Joi.number().precision(2).required(),
 });
 
@@ -73,6 +77,44 @@ router.post('/add/:userId', validBody(expenseSchema), async (req, res) => {
     res.status(500).json({ error: err.stack });
   }
 });
+
+router.put('/update/:expenseId', validBody(updateExpensePriceSchema), async (req, res) => {
+  try {
+    const expenseId = req.params.expenseId;
+    const newCost = req.body.cost;
+
+    // Update the price of the expense
+    await updateExpensePrice(expenseId, newCost);
+
+    // Send a success response
+    res.status(200).json({ message: `Expense with _id ${expenseId} updated with new cost: ${newCost}` });
+  } catch (err) {
+    // Log the error for debugging purposes
+    console.error(err);
+
+    // Handle the error appropriately and send a 500 status code (Internal Server Error)
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/delete/:expenseId', async (req, res) => {
+  try {
+    const expenseId = req.params.expenseId;
+
+    // Delete the expense
+    const deleteResult = await deleteExpense(expenseId);
+
+    // Send a success response
+    res.status(200).json({ message: `Expense with _id ${expenseId} deleted` });
+  } catch (err) {
+    // Log the error for debugging purposes
+    console.error(err);
+
+    // Handle the error appropriately and send a 500 status code (Internal Server Error)
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 export {
   router as ExpenseRouter,

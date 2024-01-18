@@ -1,7 +1,7 @@
 import express from 'express';
 const router = express.Router();
 import debug from 'debug';
-import { newId, getUsers, getUsersById, registerUser, loginUser } from '../../database.js';
+import { newId, getUsers, getUsersById, registerUser, loginUser, updateUser, deleteUser } from '../../database.js';
 import { validBody } from '../../middleware/validBody.js';
 import Joi from 'joi';
 
@@ -11,6 +11,13 @@ const userRegisterSchema = Joi.object({  // Corrected to Joi.object
   name: Joi.string().trim().required(),
   email: Joi.string().trim().email().required(),
   password: Joi.string().trim().required(),
+  yearlyIncome: Joi.number(),
+});
+
+const updateUserSchema = Joi.object({
+  name: Joi.string().trim(),
+  email: Joi.string().trim().email(),
+  password: Joi.string().trim(),
   yearlyIncome: Joi.number(),
 });
 
@@ -75,7 +82,7 @@ router.post('/register', validBody(userRegisterSchema), async (req, res) => {
   }
 });
 
-//bcrypt this and issueAuthToken
+//bcrypt this and issueAuthToken this has not been fully implemented yet
 router.post('/login', async (req, res) => {
   try {
     debugUser(`Attempting Login user with email ${req.body.email}`);
@@ -101,6 +108,55 @@ router.post('/login', async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
+router.put('/update/:userId', validBody(updateUserSchema), async (req, res) => {
+  try {
+    debugUser(`Attempting Updating user with name ${req.body.name}`);
+
+    // Extract _id from req.params
+    const userId = req.params.userId;
+
+    // Extract update data from req.body based on the schema
+    const updateData = {
+      name: req.body.name,
+      email: req.body.email,
+      password: req.body.password,
+      yearlyIncome: req.body.yearlyIncome,
+    };
+
+    // Update the user in the database
+    const updatedUser = await updateUser(userId, updateData);
+
+    // Send the updated user as the response
+    res.status(200).json(updatedUser);
+  } catch (err) {
+    // Log the error for debugging purposes
+    console.error(err);
+
+    // Handle the error appropriately and send a 500 status code (Internal Server Error)
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/delete/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    // Delete the user
+    const deleteResult = await deleteUser(userId);
+
+    // Send a success response
+    res.status(200).json({ message: `User with _id ${userId} deleted` });
+  } catch (err) {
+    // Log the error for debugging purposes
+    console.error(err);
+
+    // Handle the error appropriately and send a 500 status code (Internal Server Error)
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 
 export {
   router as UserRouter
